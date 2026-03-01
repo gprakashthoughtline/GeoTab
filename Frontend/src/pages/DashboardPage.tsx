@@ -3,6 +3,7 @@ import {
   Activity, Users, AlertTriangle, Zap, Shield, TrendingUp, Clock, Moon, RotateCcw,
 } from "lucide-react";
 import { useFleetData } from "@/hooks/useFleetData";
+import { API_BASE_URL } from "@/services/api";
 import type { RiskLevel } from "@/data/mockDrivers";
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -54,7 +55,7 @@ const DashboardPage = () => {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const response = await fetch('/api/refresh', {
+      const response = await fetch(`${API_BASE_URL}/api/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });

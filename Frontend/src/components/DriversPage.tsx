@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, Fragment, useEffect } from "react";
 import {
   Search,
   SlidersHorizontal,
@@ -100,6 +100,8 @@ const DriversPage = () => {
   const [activeFilter, setActiveFilter] = useState<RiskLevel | "all">("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"drift" | "drivers" | "mock">("drift");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const { drivers, fleetStats, isLoading, error } = useFleetData();
   const { drivers: mockDrivers, fleetStats: mockFleetStats, isLoading: isMockLoading, error: mockError } = useMockFleetData();
@@ -108,6 +110,11 @@ const DriversPage = () => {
   const activeFleetStats = isMockTab ? mockFleetStats : fleetStats;
   const activeLoading = isMockTab ? isMockLoading : isLoading;
   const activeError = isMockTab ? mockError : error;
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, activeFilter, activeTab]);
 
   if (activeLoading) {
     return (
@@ -160,7 +167,13 @@ const DriversPage = () => {
         (d.vehicleName && d.vehicleName.toLowerCase().includes(search.toLowerCase())) ||
         d.id.toLowerCase().includes(search.toLowerCase())
     )
-    .filter((d) => activeFilter === "all" || d.burnout.level === activeFilter);
+    .filter((d) => activeFilter === "all" || d.burnout.level === activeFilter)
+    .sort((a, b) => b.burnout.score - a.burnout.score);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedDrivers = filtered.slice(startIndex, endIndex);
 
   return (
     <div className="flex-1 p-6 overflow-auto">
@@ -368,27 +381,29 @@ const DriversPage = () => {
             </button>
           ))}
         </div>
-        <button className="flex items-center gap-2 px-3 py-2 bg-secondary text-sm text-muted-foreground rounded-md hover:text-foreground transition-colors ml-auto">
-          <SlidersHorizontal className="w-4 h-4" />
-          Filters
-        </button>
-      </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-end gap-3 mb-3">
-        <span className="text-xs text-muted-foreground">
-          Showing 1 – {filtered.length} of {filtered.length}
-        </span>
-        <div className="flex items-center gap-1">
-          <button className="p-1 rounded hover:bg-secondary transition-colors">
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <button className="p-1 rounded hover:bg-secondary transition-colors">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <button className="p-1 rounded hover:bg-secondary transition-colors">
-            <Maximize2 className="w-4 h-4 text-muted-foreground" />
-          </button>
+        {/* Pagination - on same line */}
+        <div className="flex items-center gap-3 ml-auto">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Showing {filtered.length === 0 ? 0 : startIndex + 1} – {Math.min(endIndex, filtered.length)} of {filtered.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="p-1 rounded hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <span className="text-xs text-muted-foreground px-2">{currentPage} / {Math.max(1, totalPages)}</span>
+            <button 
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages || filtered.length === 0}
+              className="p-1 rounded hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -402,7 +417,6 @@ const DriversPage = () => {
               </TableHead>
               <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Driver</TableHead>
               <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Vehicle</TableHead>
-              <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Route</TableHead>
               <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Hrs Drift</TableHead>
               <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Night Drift</TableHead>
               <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Aggr. Drift</TableHead>
@@ -411,8 +425,7 @@ const DriversPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered
-              .sort((a, b) => b.burnout.score - a.burnout.score)
+            {paginatedDrivers
               .map((driver, i) => (
                 <Fragment key={driver.id}>
                   <TableRow
@@ -450,9 +463,6 @@ const DriversPage = () => {
                       <span className="text-sm text-primary font-mono">{driver.vehicleName || driver.vehicleId || 'No Vehicle'}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">{driver.route}</span>
-                    </TableCell>
-                    <TableCell>
                       <DriftCell value={driver.drift.drivingHoursDrift} threshold={25} />
                     </TableCell>
                     <TableCell>
@@ -475,7 +485,7 @@ const DriversPage = () => {
                   {/* Expanded row */}
                   {expandedId === driver.id && (
                     <TableRow className="border-border hover:bg-transparent">
-                      <TableCell colSpan={9} className="p-0">
+                      <TableCell colSpan={8} className="p-0">
                         <ExpandedDriverDetail driver={driver} />
                       </TableCell>
                     </TableRow>

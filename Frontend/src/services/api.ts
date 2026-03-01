@@ -1,5 +1,7 @@
 import type { Driver } from "@/data/mockDrivers";
 
+export const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 export interface FleetStats {
     totalDrivers: number;
     high: number;
@@ -23,7 +25,7 @@ export interface OverviewResponse {
 }
 
 export async function fetchOverview(): Promise<OverviewResponse> {
-    const res = await fetch("/api/overview");
+    const res = await fetch(`${API_BASE_URL}/api/overview`);
     if (!res.ok) {
         throw new Error(`API error: ${res.status} ${res.statusText}`);
     }
@@ -31,7 +33,7 @@ export async function fetchOverview(): Promise<OverviewResponse> {
 }
 
 export async function fetchMockOverview(): Promise<OverviewResponse> {
-    const res = await fetch("/api/mock/overview");
+    const res = await fetch(`${API_BASE_URL}/api/mock/overview`);
     if (!res.ok) {
         throw new Error(`API error: ${res.status} ${res.statusText}`);
     }
